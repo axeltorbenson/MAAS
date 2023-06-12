@@ -76,6 +76,106 @@ def parse_event_page(url):
 
     return fight_data
 
+def scrape_fight_page(url):
+    response = requests.get(url, headers=headers)
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    tables = soup.find_all('table', {'class': 'b-fight-details__table js-fight-table'})
+
+    # TOTALS table
+    totals_data = []
+    table1 = tables[0]
+    # Find the rows within the table
+    rows = table1.find_all('tr', {'class': 'b-fight-details__table-row'})
+    # Iterate over each row
+    for index, row in enumerate(rows[1:]):
+        # Find all the columns in each row
+        cols = row.find_all('td', {'class': 'b-fight-details__table-col'})
+
+        round_number = index + 1
+        a_KD = cols[1].find_all('p')[0].get_text(strip=True) if len(cols[1].find_all('p')) > 1 else ""
+        b_KD = cols[1].find_all('p')[1].get_text(strip=True) if len(cols[1].find_all('p')) > 1 else ""
+        a_SIG_STR = cols[2].find_all('p')[0].get_text(strip=True) if len(cols[2].find_all('p')) > 1 else ""
+        b_SIG_STR = cols[2].find_all('p')[1].get_text(strip=True) if len(cols[2].find_all('p')) > 1 else ""
+        a_TOT_STR = cols[4].find_all('p')[0].get_text(strip=True) if len(cols[4].find_all('p')) > 1 else ""
+        b_TOT_STR = cols[4].find_all('p')[1].get_text(strip=True) if len(cols[4].find_all('p')) > 1 else ""
+        a_TD = cols[5].find_all('p')[0].get_text(strip=True) if len(cols[5].find_all('p')) > 1 else ""
+        b_TD = cols[5].find_all('p')[1].get_text(strip=True) if len(cols[5].find_all('p')) > 1 else ""
+        a_SUB = cols[7].find_all('p')[0].get_text(strip=True) if len(cols[7].find_all('p')) > 1 else ""
+        b_SUB = cols[7].find_all('p')[1].get_text(strip=True) if len(cols[7].find_all('p')) > 1 else ""
+        a_REV = cols[8].find_all('p')[0].get_text(strip=True) if len(cols[8].find_all('p')) > 1 else ""
+        b_REV = cols[8].find_all('p')[1].get_text(strip=True) if len(cols[8].find_all('p')) > 1 else ""
+        a_CTRL = cols[9].find_all('p')[0].get_text(strip=True) if len(cols[9].find_all('p')) > 1 else ""
+        b_CTRL = cols[9].find_all('p')[1].get_text(strip=True) if len(cols[9].find_all('p')) > 1 else ""
+        
+        details = {
+            'round_number': round_number,
+            'a_KD':a_KD,
+            'b_KD':b_KD,
+            'a_SIG_STR':a_SIG_STR,
+            'b_SIG_STR':b_SIG_STR,
+            'a_TOT_STR':a_TOT_STR,
+            'b_TOT_STR':b_TOT_STR,
+            'a_TD':a_TD,
+            'b_TD':b_TD,
+            'a_SUB':a_SUB,
+            'b_SUB':b_SUB,
+            'a_REV':a_REV,
+            'b_REV':b_REV,
+            'a_CTRL':a_CTRL,
+            'b_CTRL':b_CTRL,
+        }
+
+        totals_data.append(details)
+
+
+    # SIGNIFICANT STRIKES table
+    sig_strikes_data = []
+    table2 = tables[1]
+    # Find the rows within the table
+    rows = table2.find_all('tr', {'class': 'b-fight-details__table-row'})
+    # Iterate over each row
+    for index, row in enumerate(rows[1:]):
+        # Find all the columns in each row
+        cols = row.find_all('td', {'class': 'b-fight-details__table-col'})
+
+        round_number = index + 1
+        a_HEAD = cols[3].find_all('p')[0].get_text(strip=True) if len(cols[3].find_all('p')) > 1 else ""
+        b_HEAD = cols[3].find_all('p')[1].get_text(strip=True) if len(cols[3].find_all('p')) > 1 else ""
+        a_BODY = cols[4].find_all('p')[0].get_text(strip=True) if len(cols[4].find_all('p')) > 1 else ""
+        b_BODY = cols[4].find_all('p')[1].get_text(strip=True) if len(cols[4].find_all('p')) > 1 else ""
+        a_LEG = cols[5].find_all('p')[0].get_text(strip=True) if len(cols[5].find_all('p')) > 1 else ""
+        b_LEG = cols[5].find_all('p')[1].get_text(strip=True) if len(cols[5].find_all('p')) > 1 else ""
+        a_DISTANCE = cols[6].find_all('p')[0].get_text(strip=True) if len(cols[6].find_all('p')) > 1 else ""
+        b_DISTANCE = cols[6].find_all('p')[1].get_text(strip=True) if len(cols[6].find_all('p')) > 1 else ""
+        a_CLINCH = cols[7].find_all('p')[0].get_text(strip=True) if len(cols[7].find_all('p')) > 1 else ""
+        b_CLINCH = cols[7].find_all('p')[1].get_text(strip=True) if len(cols[7].find_all('p')) > 1 else ""
+        a_GROUND = cols[8].find_all('p')[0].get_text(strip=True) if len(cols[8].find_all('p')) > 1 else ""
+        b_GROUND = cols[8].find_all('p')[1].get_text(strip=True) if len(cols[8].find_all('p')) > 1 else ""
+
+        details = {
+            'round_number': round_number,
+            'a_HEAD':a_HEAD,
+            'b_HEAD':b_HEAD,
+            'a_BODY':a_BODY,
+            'b_BODY':b_BODY,
+            'a_LEG':a_LEG,
+            'b_LEG':b_LEG,
+            'a_DISTANCE':a_DISTANCE,
+            'b_DISTANCE':b_DISTANCE,
+            'a_CLINCH':a_CLINCH,
+            'b_CLINCH':b_CLINCH,
+            'a_GROUND':a_GROUND,
+            'b_GROUND':b_GROUND,
+        }
+
+        sig_strikes_data.append(details)
+
+    fight_data = pd.merge(pd.DataFrame(totals_data), pd.DataFrame(sig_strikes_data), on='round_number', how='inner')
+
+    return fight_data
+
 all_fights = []
 
 for link in event_links[1:25]:
