@@ -23,6 +23,10 @@ def parse_table_row(cols, col_number, sub_row_number):
     return row[sub_row_number].get_text(strip=True) if len(cols[col_number].find_all('p')) > 1 else ""
 
 def parse_event_page(event_html):
+    '''
+    Columns to add:
+    date of event
+    '''
     # event name
     event_name = event_html.find('h2').get_text(strip=True)
 
@@ -110,3 +114,94 @@ def parse_event_page(event_html):
         fight_data.append(details)
 
     return fight_data
+
+fight_data_list = []
+# until 629
+for index, link in enumerate(event_links[1:629]):
+    fight_data_list.extend(parse_event_page(extract_html(link)))
+    print(f'parsed event {index}: '+ link)
+    time.sleep(random.uniform(0.5, 2))
+
+df = pd.DataFrame(fight_data_list)
+
+def split_column(df, col):
+    df[col].fillna('NA of NA', inplace=True)
+    # make function to split column
+    df[[f'{col}_landed', f'{col}_attempted']] = df[col].str.split(' of ', expand=True)
+    df[[f'{col}_landed', f'{col}_attempted']] = df[[f'{col}_landed', f'{col}_attempted']].replace('NA', np.nan)
+    # Convert columns to float type
+    df[f'{col}_landed'] = df[f'{col}_landed'].astype(float)
+    df[f'{col}_attempted'] = df[f'{col}_attempted'].astype(float)
+    df.drop(col, axis=1, inplace=True)
+    return df
+
+
+cols_to_split = [
+    'first_fighter_round_1_SIG_STR', 'second_fighter_round_1_SIG_STR', 'first_fighter_round_1_TOT_STR',
+    'second_fighter_round_1_TOT_STR', 'first_fighter_round_1_TD', 'second_fighter_round_1_TD', 'first_fighter_round_2_SIG_STR',
+    'second_fighter_round_2_SIG_STR', 'first_fighter_round_2_TOT_STR', 'second_fighter_round_2_TOT_STR', 'first_fighter_round_2_TD',
+    'second_fighter_round_2_TD', 'first_fighter_round_3_SIG_STR', 'second_fighter_round_3_SIG_STR', 'first_fighter_round_3_TOT_STR',
+    'second_fighter_round_3_TOT_STR', 'first_fighter_round_3_TD', 'second_fighter_round_3_TD', 'first_fighter_round_4_SIG_STR',
+    'second_fighter_round_4_SIG_STR', 'first_fighter_round_4_TOT_STR', 'second_fighter_round_4_TOT_STR', 'first_fighter_round_4_TD',
+    'second_fighter_round_4_TD', 'first_fighter_round_5_SIG_STR', 'second_fighter_round_5_SIG_STR', 'first_fighter_round_5_TOT_STR',
+    'second_fighter_round_5_TOT_STR', 'first_fighter_round_5_TD', 'second_fighter_round_5_TD', 'first_fighter_round_1_HEAD',
+    'second_fighter_round_1_HEAD', 'first_fighter_round_1_BODY', 'second_fighter_round_1_BODY', 'first_fighter_round_1_LEG',
+    'second_fighter_round_1_LEG', 'first_fighter_round_1_DISTANCE', 'second_fighter_round_1_DISTANCE',
+    'first_fighter_round_1_CLINCH', 'second_fighter_round_1_CLINCH', 'first_fighter_round_1_GROUND', 'second_fighter_round_1_GROUND',
+    'first_fighter_round_2_HEAD', 'second_fighter_round_2_HEAD', 'first_fighter_round_2_BODY', 'second_fighter_round_2_BODY',
+    'first_fighter_round_2_LEG', 'second_fighter_round_2_LEG', 'first_fighter_round_2_DISTANCE', 'second_fighter_round_2_DISTANCE',
+    'first_fighter_round_2_CLINCH', 'second_fighter_round_2_CLINCH', 'first_fighter_round_2_GROUND', 'second_fighter_round_2_GROUND',
+    'first_fighter_round_3_HEAD', 'second_fighter_round_3_HEAD', 'first_fighter_round_3_BODY', 'second_fighter_round_3_BODY',
+    'first_fighter_round_3_LEG', 'second_fighter_round_3_LEG', 'first_fighter_round_3_DISTANCE', 'second_fighter_round_3_DISTANCE',
+    'first_fighter_round_3_CLINCH', 'second_fighter_round_3_CLINCH', 'first_fighter_round_3_GROUND', 'second_fighter_round_3_GROUND',
+    'first_fighter_round_4_HEAD', 'second_fighter_round_4_HEAD', 'first_fighter_round_4_BODY', 'second_fighter_round_4_BODY',
+    'first_fighter_round_4_LEG', 'second_fighter_round_4_LEG', 'first_fighter_round_4_DISTANCE', 'second_fighter_round_4_DISTANCE',
+    'first_fighter_round_4_CLINCH', 'second_fighter_round_4_CLINCH', 'first_fighter_round_4_GROUND', 'second_fighter_round_4_GROUND',
+    'first_fighter_round_5_HEAD', 'second_fighter_round_5_HEAD', 'first_fighter_round_5_BODY', 'second_fighter_round_5_BODY',
+    'first_fighter_round_5_LEG', 'second_fighter_round_5_LEG', 'first_fighter_round_5_DISTANCE', 'second_fighter_round_5_DISTANCE',
+    'first_fighter_round_5_CLINCH', 'second_fighter_round_5_CLINCH', 'first_fighter_round_5_GROUND', 'second_fighter_round_5_GROUND'
+    ]
+
+for col in cols_to_split:
+    split_column(df, col)
+
+def convert_to_seconds(df, cols):
+    for col in cols:
+        # Convert all column data to string type
+        df[col] = df[col].astype(str)
+        
+        # Replace 'nan' values with a placeholder
+        df[col] = df[col].replace('nan', 'NA:NA')
+
+        # Split the time on the colon
+        time_split = df[col].str.split(':', expand=True)
+
+        # Create a mask for rows that are not NA
+        mask = df[col] != 'NA:NA'
+
+        # Convert minutes to seconds and add remaining seconds, only for non-NA rows
+        df.loc[mask, col] = time_split[0][mask].astype(int) * 60 + time_split[1][mask].astype(int)
+
+        # Replace placeholders with NA
+        df[col].replace('NA:NA', np.nan, inplace=True)
+
+    return df
+
+cols_to_seconds = [
+    'first_fighter_round_1_CTRL',
+    'second_fighter_round_1_CTRL',
+    'first_fighter_round_2_CTRL',
+    'second_fighter_round_2_CTRL',
+    'first_fighter_round_3_CTRL',
+    'second_fighter_round_3_CTRL',
+    'first_fighter_round_4_CTRL',
+    'second_fighter_round_4_CTRL',
+    'first_fighter_round_5_CTRL',
+    'second_fighter_round_5_CTRL'
+
+]
+
+df = convert_to_seconds(df, cols_to_seconds)
+
+df['time_format'] = df['time_format'].astype(str).str.extract(r'^(\d+)')
+df = df.rename(columns={'time_format':'number_of_rounds'})
