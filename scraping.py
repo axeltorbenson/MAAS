@@ -6,16 +6,22 @@ import time
 import random
 
 def extract_html(url):
-    response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
-    html_content  = BeautifulSoup(response.content, 'html.parser')
-    return html_content 
+    try:
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+        html_content  = BeautifulSoup(response.content, 'html.parser')
+        return html_content
+    except Exception as e:
+        print("Failed to fetch the URL", url, ":", e)
 
 base_url = "http://www.ufcstats.com/statistics/events/completed?page=all"
 
-html_content = extract_html(base_url)
-event_links = []
-for a in html_content.select('td.b-statistics__table-col a'):
-    event_links.append(a['href'])
+try:
+    html_content = extract_html(base_url)
+    event_links = []
+    for a in html_content.select('td.b-statistics__table-col a'):
+        event_links.append(a['href'])
+except Exception as e:
+    print("Failed to scrape the base url:", e)
 
 def parse_table_row(cols, col_number, sub_row_number):
     # sub_row_number is either 0 or 1. Each "row" has 2 rows in it
@@ -23,10 +29,6 @@ def parse_table_row(cols, col_number, sub_row_number):
     return row[sub_row_number].get_text(strip=True) if len(cols[col_number].find_all('p')) > 1 else ""
 
 def parse_event_page(event_html):
-    '''
-    Columns to add:
-    date of event
-    '''
     # event name
     event_name = event_html.find('h2').get_text(strip=True)
 
@@ -39,6 +41,7 @@ def parse_event_page(event_html):
     for row in table.find_all('tr')[1:]:
         cols = row.find_all('td')
         details = {
+            # main details of the fight
             'fight_link': row.get('data-link'),
             'event_name': event_name,
             'first_fighter_name': parse_table_row(cols, 1, 0),
@@ -57,6 +60,7 @@ def parse_event_page(event_html):
         
         time.sleep(random.uniform(0.5, 3))
 
+        # the rest of this function clicks into the fight specific page and gets more detailed info
         fight_html = extract_html(details['fight_link'])
 
         # method of victory and time format (number of possible rounds)
@@ -116,23 +120,39 @@ def parse_event_page(event_html):
     return fight_data
 
 fight_data_list = []
-# until 629
+# I scraped until UFC 21, where fights started following modern round standards
 for index, link in enumerate(event_links[1:629]):
-    fight_data_list.extend(parse_event_page(extract_html(link)))
-    print(f'parsed event {index}: '+ link)
-    time.sleep(random.uniform(0.5, 2))
+    try:
+        fight_data_list.extend(parse_event_page(extract_html(link)))
+        print(f'parsed event {index}: '+ link)
+        time.sleep(random.uniform(0.5, 2))
 
-df = pd.DataFrame(fight_data_list)
+        # Save to CSV after every parse, in case of failure.
+        df = pd.DataFrame(fight_data_list)
+        df.to_csv("fight_data.csv", index=False)
+    except Exception as e:
+        print("Failed to parse event link", link, ":", e)
+
+try:
+    df = pd.DataFrame(fight_data_list)
+    df.to_csv("fight_data.csv", index=False)
+except Exception as e:
+    print("Failed to save the data:", e)
 
 def split_column(df, col):
+    # Create a placeholder for NA values
     df[col].fillna('NA of NA', inplace=True)
+
     # make function to split column
     df[[f'{col}_landed', f'{col}_attempted']] = df[col].str.split(' of ', expand=True)
     df[[f'{col}_landed', f'{col}_attempted']] = df[[f'{col}_landed', f'{col}_attempted']].replace('NA', np.nan)
+
     # Convert columns to float type
     df[f'{col}_landed'] = df[f'{col}_landed'].astype(float)
     df[f'{col}_attempted'] = df[f'{col}_attempted'].astype(float)
+
     df.drop(col, axis=1, inplace=True)
+
     return df
 
 
@@ -166,10 +186,10 @@ for col in cols_to_split:
     split_column(df, col)
 
 def convert_to_seconds(df, cols):
+    # there is a single fight with "--" as the time. I manually replaced with NA
     for col in cols:
-        # Convert all column data to string type
         df[col] = df[col].astype(str)
-        
+
         # Replace 'nan' values with a placeholder
         df[col] = df[col].replace('nan', 'NA:NA')
 
@@ -179,7 +199,6 @@ def convert_to_seconds(df, cols):
         # Create a mask for rows that are not NA
         mask = df[col] != 'NA:NA'
 
-        # Convert minutes to seconds and add remaining seconds, only for non-NA rows
         df.loc[mask, col] = time_split[0][mask].astype(int) * 60 + time_split[1][mask].astype(int)
 
         # Replace placeholders with NA
