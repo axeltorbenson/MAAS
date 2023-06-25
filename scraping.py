@@ -42,6 +42,11 @@ def parse_event_page(event_html):
         cols = row.find_all('td')
         details = {
             # main details of the fight
+
+            ####
+            # Need to include date next time I scrape
+            ####
+
             'fight_link': row.get('data-link'),
             'event_name': event_name,
             'first_fighter_name': parse_table_row(cols, 1, 0),
