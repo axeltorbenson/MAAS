@@ -45,6 +45,7 @@ def parse_event_page(event_html):
 
             ####
             # Need to include date next time I scrape
+            # Need to include the weight class of a fight
             ####
 
             'fight_link': row.get('data-link'),
